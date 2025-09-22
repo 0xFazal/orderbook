@@ -8,8 +8,13 @@ import { Side, OrderType } from '../types';
 export class OrderController {
   static validateBody(body: any) {
     if (!body) return 'Missing body';
+
+    if (!body.symbol || typeof body.symbol !== 'string') {
+      return 'Missing or invalid symbol';
+    }
+
     if (typeof body.quantity === 'undefined') return 'Missing quantity';
-    const quantity = Number(body.quantity);                                                                   
+    const quantity = Number(body.quantity);
     if (!isFinite(quantity) || quantity <= 0) return 'Invalid quantity';
 
     const type: OrderType = body.type || 'limit';
@@ -29,6 +34,7 @@ export class OrderController {
     if (validation) return res.status(400).json({ error: validation });
 
     const id = uuidv4();
+    const symbol: string = req.body.symbol;
     const type: OrderType = req.body.type || 'limit';
     const price = type === 'limit' ? Number(req.body.price).toString() : undefined;
     const quantity = Number(req.body.quantity).toString();
@@ -37,8 +43,8 @@ export class OrderController {
       await DB.withClient(async (client) => {
         await client.query('BEGIN');
         try {
-          await OrderModel.insert({ id, side, type, price, quantity });
-          const trades = await MatchingEngine.match(client, { id, side, type, price, quantity });
+          await OrderModel.insert({ id, symbol, side, type, price, quantity });
+          const trades = await MatchingEngine.match(client, { id, symbol, side, type, price, quantity });
           const order = await OrderModel.findById(id);
           await client.query('COMMIT');
           return res.status(201).json({ order, trades });
@@ -55,8 +61,11 @@ export class OrderController {
 
   static async getOrderbook(req: Request, res: Response) {
     try {
-      const snapshot = await OrderModel.getOrderbookSnapshot();
-      return res.json(snapshot);
+      const symbol = req.query.symbol as string;
+      if (!symbol) return res.status(400).json({ error: 'Missing symbol' });
+
+      const snapshot = await OrderModel.getOrderbookSnapshot(symbol);
+      return res.json({ symbol, ...snapshot });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: 'internal error' });
@@ -65,9 +74,12 @@ export class OrderController {
 
   static async getTrades(req: Request, res: Response) {
     try {
+      const symbol = req.query.symbol as string;
+      if (!symbol) return res.status(400).json({ error: 'Missing symbol' });
+
       const limit = req.query.limit ? Number(req.query.limit) : 100;
-      const trades = await (await import('../models/TradeModel')).TradeModel.recent(limit);
-      return res.json({ trades });
+      const trades = await (await import('../models/TradeModel')).TradeModel.recent(symbol, limit);
+      return res.json({ symbol, trades });
     } catch (err) {
       console.error(err);
       return res.status(500).json({ error: 'internal error' });

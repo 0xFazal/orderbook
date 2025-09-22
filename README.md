@@ -1,6 +1,6 @@
 # Orderbook REST API
 
-A simple **orderbook API** built with **Node.js + TypeScript + Postgres**, supporting **limit and market orders** with automatic trade matching.
+A simple **multi-symbol orderbook API** built with **Node.js + TypeScript + Postgres**, supporting **limit and market orders** with automatic trade matching.
 
 ---
 
@@ -20,8 +20,6 @@ npm install
 ```
 
 ### 3. Configure Postgres
-
-#### Option A: Using Docker
 
 ```bash
 ./pg_setup.sh
@@ -64,6 +62,7 @@ Server will run at `http://localhost:3000`.
 
 ```json
 {
+  "symbol": "BTC-USD",
   "side": "buy",
   "type": "limit",
   "price": "100.00",
@@ -75,6 +74,7 @@ Server will run at `http://localhost:3000`.
 
 ```json
 {
+  "symbol": "BTC-USD",
   "side": "sell",
   "type": "market",
   "quantity": "2"
@@ -87,6 +87,7 @@ Server will run at `http://localhost:3000`.
 {
   "order": {
     "id": "uuid",
+    "symbol": "BTC-USD",
     "side": "buy",
     "type": "limit",
     "price": "100.00",
@@ -98,6 +99,7 @@ Server will run at `http://localhost:3000`.
   "trades": [
     {
       "id": "uuid",
+      "symbol": "BTC-USD",
       "buy_order_id": "uuid",
       "sell_order_id": "uuid",
       "price": "99.50",
@@ -112,12 +114,13 @@ Server will run at `http://localhost:3000`.
 
 ### 2. Get Orderbook Snapshot
 
-**GET** `/orders`
+**GET** `/orders?symbol=BTC-USD`
 
 **Response:**
 
 ```json
 {
+  "symbol": "BTC-USD",
   "buys": [
     { "price": "100", "quantity": "5" },
     { "price": "99", "quantity": "3" }
@@ -135,12 +138,13 @@ Server will run at `http://localhost:3000`.
 
 ### 3. Get Trade History
 
-**GET** `orders/trades?limit=50`
+**GET** `/orders/trades?symbol=BTC-USD&limit=50`
 
 **Response:**
 
 ```json
 {
+  "symbol": "BTC-USD",
   "trades": [
     {
       "id": "uuid",
@@ -154,12 +158,14 @@ Server will run at `http://localhost:3000`.
 }
 ```
 
-- `limit` optional, default `100`.
+- `symbol` is required.  
+- `limit` is optional, default `100`.
 
 ---
 
 ## Matching Engine Logic
 
+- **Symbol-level separation:** orders only match within the same `symbol`.
 - **Price-time priority algorithm**:
 
   1. **Limit Buy**: matches **lowest-price** sell orders where `sellPrice <= buyPrice`.  
@@ -192,14 +198,14 @@ npm run migrate
 
 ```bash
 # Place limit buy
-curl -X POST http://localhost:3000/orders/buy   -H "Content-Type: application/json"   -d '{"side":"buy","type":"limit","price":"100","quantity":"5"}'
+curl -X POST http://localhost:3000/orders/buy   -H "Content-Type: application/json"   -d '{"symbol":"BTC-USD","side":"buy","type":"limit","price":"100","quantity":"5"}'
 
 # Place market sell
-curl -X POST http://localhost:3000/orders/sell   -H "Content-Type: application/json"   -d '{"side":"sell","type":"market","quantity":"2"}'
+curl -X POST http://localhost:3000/orders/sell   -H "Content-Type: application/json"   -d '{"symbol":"BTC-USD","side":"sell","type":"market","quantity":"2"}'
 
 # Get orderbook
-curl http://localhost:3000/orders
+curl http://localhost:3000/orders?symbol=BTC-USD
 
 # Get trades
-curl http://localhost:3000/orders/trades?limit=50
+curl http://localhost:3000/orders/trades?symbol=BTC-USD&limit=50
 ```

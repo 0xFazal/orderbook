@@ -2,10 +2,21 @@ import { DB } from '../db';
 import { OrderRow, Side, OrderType } from '../types';
 
 export class OrderModel {
-  static async insert(order: { id: string; side: Side; type: OrderType; price?: string; quantity: string; }) {
-    const sql = `INSERT INTO orders (id, side, type, price, quantity, remaining, status) 
-                 VALUES ($1,$2,$3,$4,$5,$6,$7)`;
-    const params = [order.id, order.side, order.type, order.price ?? null, order.quantity, order.quantity, 'open'];
+  static async insert(order: { id: string; symbol: string; side: Side; type: OrderType; price?: string; quantity: string; }) {
+    const sql = `
+      INSERT INTO orders (id, symbol, side, type, price, quantity, remaining, status) 
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    `;
+    const params = [
+      order.id,
+      order.symbol,
+      order.side,
+      order.type,
+      order.price ?? null,
+      order.quantity,
+      order.quantity,
+      'open'
+    ];
     await DB.withClient(async (client) => client.query(sql, params));
     return this.findById(order.id);
   }
@@ -21,23 +32,33 @@ export class OrderModel {
     await client.query('UPDATE orders SET remaining=$1, status=$2 WHERE id=$3', [remaining, status, id]);
   }
 
-  static async getOrderbookSnapshot() {
+  static async getOrderbookSnapshot(symbol: string) {
     return DB.withClient(async (client) => {
-      const buys = (await client.query(`
-        SELECT price, SUM(remaining::numeric) as quantity 
-        FROM orders 
-        WHERE side='buy' AND remaining::numeric>0 AND type='limit'
-        GROUP BY price 
-        ORDER BY price::numeric DESC
-      `)).rows;
+      const buys = (
+        await client.query(
+          `
+          SELECT price, SUM(remaining::numeric) as quantity 
+          FROM orders 
+          WHERE symbol=$1 AND side='buy' AND remaining::numeric>0 AND type='limit'
+          GROUP BY price 
+          ORDER BY price::numeric DESC
+        `,
+          [symbol]
+        )
+      ).rows;
 
-      const sells = (await client.query(`
-        SELECT price, SUM(remaining::numeric) as quantity 
-        FROM orders 
-        WHERE side='sell' AND remaining::numeric>0 AND type='limit'
-        GROUP BY price 
-        ORDER BY price::numeric ASC
-      `)).rows;
+      const sells = (
+        await client.query(
+          `
+          SELECT price, SUM(remaining::numeric) as quantity 
+          FROM orders 
+          WHERE symbol=$1 AND side='sell' AND remaining::numeric>0 AND type='limit'
+          GROUP BY price 
+          ORDER BY price::numeric ASC
+        `,
+          [symbol]
+        )
+      ).rows;
 
       return { buys, sells };
     });

@@ -14,37 +14,37 @@ export class MatchingEngine {
       if (order.side === 'buy') {
         candidatesSql = `
           SELECT * FROM orders 
-          WHERE side = $1 AND status != 'filled' AND price <= $2 
+          WHERE symbol = $1 AND side = $2 AND status != 'filled' AND price <= $3 
           ORDER BY price::numeric ASC, created_at ASC
           FOR UPDATE
         `;
-        params = [opposite, order.price];
+        params = [order.symbol, opposite, order.price];
       } else {
         candidatesSql = `
           SELECT * FROM orders 
-          WHERE side = $1 AND status != 'filled' AND price >= $2 
+          WHERE symbol = $1 AND side = $2 AND status != 'filled' AND price >= $3 
           ORDER BY price::numeric DESC, created_at ASC
           FOR UPDATE
         `;
-        params = [opposite, order.price];
+        params = [order.symbol, opposite, order.price];
       }
     } else { 
       if (order.side === 'buy') {
         candidatesSql = `
           SELECT * FROM orders
-          WHERE side = $1 AND status != 'filled'
+          WHERE symbol = $1 AND side = $2 AND status != 'filled'
           ORDER BY price::numeric ASC, created_at ASC
           FOR UPDATE
         `;
-        params = [opposite];
+        params = [order.symbol, opposite];
       } else {
         candidatesSql = `
           SELECT * FROM orders
-          WHERE side = $1 AND status != 'filled'
+          WHERE symbol = $1 AND side = $2 AND status != 'filled'
           ORDER BY price::numeric DESC, created_at ASC
           FOR UPDATE
         `;
-        params = [opposite];
+        params = [order.symbol, opposite];
       }
     }
 
@@ -59,7 +59,7 @@ export class MatchingEngine {
       if (makerRemaining <= 0) continue;
 
       const tradeQty = Math.min(makerRemaining, ordersRemaining);
-      const tradePrice = Number(m.price); // use maker price as standard practice in stock exchanges
+      const tradePrice = Number(m.price); // maker price
 
       const tradeId = uuidv4();
       const buyOrderId = order.side === 'buy' ? order.id : m.id;
@@ -67,13 +67,13 @@ export class MatchingEngine {
 
       await TradeModel.insert(client, {
         id: tradeId,
+        symbol: order.symbol,
         buy_order_id: buyOrderId,
         sell_order_id: sellOrderId,
         price: tradePrice.toString(),
         quantity: tradeQty.toString()
       });
 
-      // update maker remaining
       const newMakerRemaining = (makerRemaining - tradeQty).toString();
       const makerStatus = Number(newMakerRemaining) === 0 ? 'filled' : 'partial';
       await OrderModel.updateRemainingAndStatus(client, m.id, newMakerRemaining, makerStatus);
@@ -81,6 +81,7 @@ export class MatchingEngine {
       ordersRemaining -= tradeQty;
       tradesCreated.push({
         id: tradeId,
+        symbol: order.symbol,
         buy_order_id: buyOrderId,
         sell_order_id: sellOrderId,
         price: tradePrice.toString(),
@@ -88,7 +89,6 @@ export class MatchingEngine {
       });
     }
 
-    // update taker (incoming) order
     const newTakerRemaining = ordersRemaining.toString();
     const takerStatus = Number(newTakerRemaining) === 0
       ? 'filled'
