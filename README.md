@@ -1,6 +1,20 @@
-# Orderbook REST API
+# Orderbook
 
-A simple **multi-symbol orderbook API** built with **Node.js + TypeScript + Postgres**, supporting **limit and market orders** with automatic trade matching.
+A simple **multi-symbol orderbook service** built with **Node.js + TypeScript + Postgres**, supporting **limit and market orders** with automatic trade matching.
+
+---
+
+## Matching Engine
+
+- **Price-time priority algorithm**:
+
+  1. **Limit Buy**: matches **lowest-price** sell orders where `sellPrice <= buyPrice`.  
+  2. **Limit Sell**: matches **highest-price** buy orders where `buyPrice >= sellPrice`.  
+  3. **Market orders**: execute immediately against the top-of-book, ignoring price.  
+
+- Partial fills allowed.  
+- Transactions and row locks prevent double matching.  
+- Trades persist in `trades` table, orders updated with remaining quantity and status (`open`, `partial`, `filled`).  
 
 ---
 
@@ -138,7 +152,7 @@ Server will run at `http://localhost:3000`.
 
 ### 3. Get Trade History
 
-**GET** `/orders/trades?symbol=BTC-USD&limit=50`
+**GET** `/trades?symbol=BTC-USD&limit=50`
 
 **Response:**
 
@@ -160,21 +174,6 @@ Server will run at `http://localhost:3000`.
 
 - `symbol` is required.  
 - `limit` is optional, default `100`.
-
----
-
-## Matching Engine Logic
-
-- **Symbol-level separation:** orders only match within the same `symbol`.
-- **Price-time priority algorithm**:
-
-  1. **Limit Buy**: matches **lowest-price** sell orders where `sellPrice <= buyPrice`.  
-  2. **Limit Sell**: matches **highest-price** buy orders where `buyPrice >= sellPrice`.  
-  3. **Market orders**: execute immediately against the top-of-book, ignoring price.  
-
-- Partial fills allowed.  
-- Transactions and row locks prevent double matching.  
-- Trades persist in `trades` table, orders updated with remaining quantity and status (`open`, `partial`, `filled`).  
 
 ---
 
@@ -207,5 +206,5 @@ curl -X POST http://localhost:3000/orders/sell   -H "Content-Type: application/j
 curl http://localhost:3000/orders?symbol=BTC-USD
 
 # Get trades
-curl http://localhost:3000/orders/trades?symbol=BTC-USD&limit=50
+curl http://localhost:3000/trades?symbol=BTC-USD&limit=50
 ```

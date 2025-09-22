@@ -72,17 +72,4 @@ export class OrderController {
     }
   }
 
-  static async getTrades(req: Request, res: Response) {
-    try {
-      const symbol = req.query.symbol as string;
-      if (!symbol) return res.status(400).json({ error: 'Missing symbol' });
-
-      const limit = req.query.limit ? Number(req.query.limit) : 100;
-      const trades = await (await import('../models/TradeModel')).TradeModel.recent(symbol, limit);
-      return res.json({ symbol, trades });
-    } catch (err) {
-      console.error(err);
-      return res.status(500).json({ error: 'internal error' });
-    }
-  }
 }

@@ -3,7 +3,7 @@ export type OrderType = 'limit' | 'market';
 
 export interface OrderRow {
   id: string;
-  symbol: string;           // NEW: market symbol, e.g., BTC-USD
+  symbol: string;
   side: Side;
   type: OrderType;
   price?: string;
@@ -15,7 +15,7 @@ export interface OrderRow {
 
 export interface TradeRow {
   id: string;
-  symbol: string;           // NEW: same symbol as matching orders
+  symbol: string;
   buy_order_id: string;
   sell_order_id: string;
   price: string;
@@ -25,7 +25,7 @@ export interface TradeRow {
 
 export interface IncomingOrder {
   id: string;
-  symbol: string;           // NEW: required to route to correct orderbook
+  symbol: string;
   side: Side;
   type: OrderType;
   price?: string;

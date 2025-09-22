@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 -- orders table
 CREATE TABLE IF NOT EXISTS orders (
   id UUID PRIMARY KEY,
-  symbol VARCHAR(32) NOT NULL, -- NEW: market symbol, e.g., BTC-USD
+  symbol VARCHAR(32) NOT NULL,
   side VARCHAR(4) NOT NULL CHECK (side IN ('buy','sell')),
   type VARCHAR(10) NOT NULL DEFAULT 'limit' CHECK (type IN ('limit','market')), 
   price NUMERIC CHECK (price > 0),  
@@ -20,7 +20,7 @@ CREATE TABLE IF NOT EXISTS orders (
 -- trades table
 CREATE TABLE IF NOT EXISTS trades (
   id UUID PRIMARY KEY,
-  symbol VARCHAR(32) NOT NULL, -- NEW: same as matched orders
+  symbol VARCHAR(32) NOT NULL,
   buy_order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   sell_order_id UUID NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
   price NUMERIC NOT NULL,
